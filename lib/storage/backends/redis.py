@@ -17,6 +17,7 @@
 
 from __future__ import division, absolute_import, print_function, unicode_literals
 
+import datetime
 import json
 
 import redis
@@ -44,7 +45,10 @@ class RedisConnection(object):
 
     def add(self, key, expires, value):
         if expires:
-            self._execute("setex", key, (expires - Time.syncedNow()), value)
+            diff_time = expires - Time.syncedNow()
+            diff_time_tmp = diff_time - datetime.timedelta(seconds=1)
+            if (diff_time_tmp.days ) >= 0:
+                self._execute("setex", key, diff_time, value)
         else:
             self._execute("set", key, value)
 
@@ -99,6 +103,9 @@ class MPinStorage(BaseStorage):
             return None
 
         data = self.redis.get(get_redis_id(_id))
+        if data is None:
+            return None
+
         return Item(self, None, **json.loads(data))
 
     def _delete_item(self, item):

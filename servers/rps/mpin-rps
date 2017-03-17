@@ -1,0 +1,75 @@
+#!/bin/sh
+# chkconfig: 2345 80 20
+# description: mpin rps start/stop script
+# processname: mpin-rps
+#
+# Instalation:
+# copy file to /etc/init.d
+# chmod +x /etc/init.d/mpin-rps
+# chkconfig --add /etc/init.d/mpin-rps
+# chkconfig mpin-rps on
+#
+# Usage: (as root)
+# service mpin-rps start
+# service mpin-rps stop
+# service mpin-rps restart
+
+#export path
+export PYTHONPATH=/opt/src/milagro-mfa-services/lib:/usr/local/lib/python2.7/site-packages
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+
+SCRIPT_PATH=rps/rps.py
+SERVER_PATH=/usr/local/mpin/milagro-mfa-services/servers
+STDOUT_PATH=/usr/local/mpin/rps.out
+
+# User running the Play process
+USER=ansible
+
+# source function library
+. /etc/init.d/functions
+RETVAL=0
+
+start() {
+        echo -n "Starting RPS service: "
+        su -s /bin/sh $USER -c "source ~/.bash_profile && cd $SERVER_PATH && nohup python $SCRIPT_PATH > $STDOUT_PATH 2>&1 &"
+        RETVAL=$?
+
+        if [ $RETVAL -eq 0 ]; then
+                echo_success
+        else
+                echo_failure
+        fi
+        echo
+}
+stop() {
+        echo -n "Shutting down RPS service: "
+        RETVAL=$?
+        pids=$(ps aux | grep rps | grep python | grep -vw grep | awk '{ print $2 }')
+        for pid in ${pids[*]}
+        do
+                kill -9 ${pid}
+        done
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+                echo_success
+        else
+                echo_failure
+        fi
+        echo
+}
+case "$1" in
+        start)
+        start
+        ;;
+        stop)
+        stop
+        ;;
+        restart|reload)
+        stop
+        sleep 10
+        start
+        ;;
+        *)
+        echo "Usage: $0 {start|stop|restart}"
+esac
+exit 0

@@ -20,6 +20,9 @@ from __future__ import unicode_literals
 """HTTP server settings"""
 address = '127.0.0.1'
 port = 8011
+# sslCertificateFile = ''
+# sslCertificateKeyFile = ''
+# sslCACertificatesFile = ''
 
 """Set Access-Control-Allow-Origin header"""
 # allowOrigin = ['*']
@@ -113,6 +116,8 @@ LogoutURL = '/logout'
 rpsBaseURL = "http://%s:%s/" % (address, port)  # URL where RPS is accesable
 rpsPrefix = 'rps'  # Default
 # setDeviceName = True
+# verifyIdentityRegex = '^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$'  # Default
+# verifyIdentityShow = False  # Default
 
 """Mobile client options"""
 # mobileUseNative = True # False by default

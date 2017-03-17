@@ -20,6 +20,8 @@ from __future__ import unicode_literals
 """HTTP server settings"""
 address = "127.0.0.1"
 port = 8001
+# sslCertificateFile = ''
+# sslCertificateKeyFile = ''
 
 """Time synchronization
 

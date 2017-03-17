@@ -137,7 +137,7 @@ class Applications(object):
         return str(data)
 
 
-def detectProxy():
+def detectProxy(ca_certs=None):
     # Detect proxy settings for http and https from the environment
     # Uses http_proxy and https_proxy environment variables
 
@@ -169,15 +169,22 @@ def detectProxy():
     if noProxy:
         proxies["noProxy"] = noProxy.split(",")
 
+    # Detect config settings for ssl
+    if ca_certs:
+        proxies["ca_certs"] = ca_certs
+
 
 def fetchConfig(url):
     # Get fetch config settings for httpclient for proxy
     u = urlparse(url)
     if u.scheme in proxies:
         if u.hostname not in proxies.get("noProxy", []):
+            # Get fetch config settings for ssl
+            proxies[u.scheme]["ca_certs"] = proxies.get("ca_certs", None)
             return proxies[u.scheme]
 
-    return {}
+    # Get fetch config settings for ssl
+    return {"ca_certs": proxies.get("ca_certs", None)}
 
 
 class Time(object):

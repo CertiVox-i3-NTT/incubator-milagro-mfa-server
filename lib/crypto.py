@@ -22,6 +22,8 @@ from mpin_utils.common import Time
 
 # AES-GCM Key size
 PAS = mpin.PAS
+# placeholder for 256 bit authOTT
+HASH_BYTES = mpin.HASH_BYTES
 
 
 class CryptoError(Exception):
@@ -29,6 +31,67 @@ class CryptoError(Exception):
     """Exception raises by crypto module."""
 
     pass
+
+
+def mpin_hash_id(cstr):
+    '''Return hash string encoded in hex.'''
+    STR = mpin.ffi.new("octet*")
+    STR_val = mpin.ffi.new("char[%s]" %len(cstr),cstr)
+    STR[0].val = STR_val
+    STR[0].max = len(cstr)
+    STR[0].len = len(cstr)
+    HASH_STR = mpin.ffi.new("octet*")
+    HASH_STR_val = mpin.ffi.new("char[]" ,HASH_BYTES)
+    HASH_STR[0].val = HASH_STR_val
+    HASH_STR[0].len = 0
+    HASH_STR[0].max = HASH_BYTES
+    mpin.libmpin.MPIN_HASH_ID(STR,HASH_STR)
+    return mpin.toHex(HASH_STR)
+
+
+def mpin_calc_client_secret_with_activation_code(hid,activation_code_hash,client_secret_share):
+    '''Calculate encoded client secret share hex with activation code.'''
+    HID = mpin.ffi.new("octet*")
+    HID_val = mpin.ffi.new("char [%s]" % len(hid), hid)
+    HID[0].val = HID_val
+    HID[0].len = len(hid)
+    HID[0].max = mpin.G1
+
+    ACT = mpin.ffi.new("octet*")
+    ACT_val = mpin.ffi.new("char [%s]" % len(activation_code_hash), activation_code_hash)
+    ACT[0].val = ACT_val
+    ACT[0].len = len(activation_code_hash)
+    ACT[0].max = len(activation_code_hash)
+
+    big0_val = '0000000000000000000000000000000000000000000000000000000000000000'.decode('hex')
+    BIG0 = mpin.ffi.new("octet*")
+    BIG0_val = mpin.ffi.new("char [%s]" % len(big0_val), big0_val)
+    BIG0[0].val = BIG0_val
+    BIG0[0].len = len(big0_val)
+    BIG0[0].max = len(big0_val)
+
+    CS1 = mpin.ffi.new("octet*")
+    CS1_val = mpin.ffi.new("char [%s]" % len(client_secret_share), client_secret_share)
+    CS1[0].val = CS1_val
+    CS1[0].len = len(client_secret_share)
+    CS1[0].max = len(client_secret_share)
+
+    ENCCS1 = mpin.ffi.new("octet*")
+    ENCCS1_val = mpin.ffi.new("char []", mpin.G1)
+    ENCCS1[0].val = ENCCS1_val
+    ENCCS1[0].len = 0
+    ENCCS1[0].max = mpin.G1
+
+    rtn = mpin.libmpin.MPIN_CLIENT_2(ACT, BIG0, HID)
+    if rtn != 0:
+        raise CryptoError(rtn)
+
+    rtn = mpin.libmpin.MPIN_RECOMBINE_G1(CS1, HID, ENCCS1)
+    if rtn != 0:
+        raise CryptoError(rtn)
+
+    encoded_client_secret_share_hex = mpin.toHex(ENCCS1)
+    return encoded_client_secret_share_hex
 
 
 def today():
@@ -286,7 +349,7 @@ def mpin_recombine_g2(certivox_server_secret, customer_server_secret):
 
 
 def mpin_server_1(mpin_id, date):
-    """Calculate HID and HTOD."""
+    """Calculate HID and HTID."""
     HID = mpin.ffi.new("octet*")
     HIDval = mpin.ffi.new("char []", mpin.G1)
     HID[0].val = HIDval

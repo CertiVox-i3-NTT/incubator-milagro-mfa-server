@@ -1,0 +1,75 @@
+#!/bin/sh
+# chkconfig: 2345 80 20
+# description: mpin dta start/stop script
+# processname: mpin-dta
+#
+# Instalation:
+# copy file to /etc/init.d
+# chmod +x /etc/init.d/mpin-dta
+# chkconfig --add /etc/init.d/mpin-dta
+# chkconfig mpin-dta on
+#
+# Usage: (as root)
+# service mpin-dta start
+# service mpin-dta stop
+# service mpin-dta restart
+
+#export path
+export PYTHONPATH=/opt/src/milagro-mfa-services/lib:/usr/local/lib/python2.7/site-packages
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+
+SCRIPT_PATH=dta/dta.py
+SERVER_PATH=/usr/local/mpin/milagro-mfa-services/servers
+STDOUT_PATH=/usr/local/mpin/dta.out
+
+# User running the Play process
+USER=ansible
+
+# source function library
+. /etc/init.d/functions
+RETVAL=0
+
+start() {
+        echo -n "Starting DTA service: "
+        su -s /bin/sh $USER -c "source ~/.bash_profile && cd $SERVER_PATH && nohup python $SCRIPT_PATH > $STDOUT_PATH 2>&1 &"
+        RETVAL=$?
+
+        if [ $RETVAL -eq 0 ]; then
+                echo_success
+        else
+                echo_failure
+        fi
+        echo
+}
+stop() {
+        echo -n "Shutting down DTA service: "
+        RETVAL=$?
+        pids=$(ps aux | grep dta | grep python | grep -vw grep | awk '{ print $2 }')
+        for pid in ${pids[*]}
+        do
+                kill -9 ${pid}
+        done
+        RETVAL=$?
+        if [ $RETVAL -eq 0 ]; then
+                echo_success
+        else
+                echo_failure
+        fi
+        echo
+}
+case "$1" in
+        start)
+        start
+        ;;
+        stop)
+        stop
+        ;;
+        restart|reload)
+        stop
+        sleep 10
+        start
+        ;;
+        *)
+        echo "Usage: $0 {start|stop|restart}"
+esac
+exit 0

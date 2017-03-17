@@ -1,0 +1,5 @@
+mock==2.0.0
+pytest==2.9.2
+pytest-localserver==0.3.5
+pytest-mock==1.1
+pytest-tornado==0.4.5
