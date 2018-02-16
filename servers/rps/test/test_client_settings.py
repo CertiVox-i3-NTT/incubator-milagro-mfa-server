@@ -96,6 +96,7 @@ def test_clientSettings(http_client, base_url):
     assert responseJson["useWebSocket"] == False
     assert responseJson["accessNumberDigits"] == accessNumberDigits
     assert responseJson["cSum"] == 1
+    assert responseJson["supportedProtocols"] == ["1pass", "2pass"]
     assert responseJson["eMpinAuthenticationURL"] == "{0}/eMpinAuthentication".format(baseURL)
     assert responseJson["eMpinActivationURL"] == "{0}/eMpinActivation".format(baseURL)
     assert responseJson["eMpinActivationVerifyURL"] == "{0}/eMpinActivationVerify".format(baseURL)
@@ -141,6 +142,7 @@ def test_clientSettingsCheckSumFalse(http_client, base_url):
     assert responseJson["useWebSocket"] == False
     assert responseJson["accessNumberDigits"] == accessNumberDigits
     assert responseJson["cSum"] == 1
+    assert responseJson["supportedProtocols"] == ["1pass", "2pass"]
     assert responseJson["eMpinAuthenticationURL"] == "{0}/eMpinAuthentication".format(baseURL)
     assert responseJson["eMpinActivationURL"] == "{0}/eMpinActivation".format(baseURL)
     assert responseJson["eMpinActivationVerifyURL"] == "{0}/eMpinActivationVerify".format(baseURL)
@@ -186,6 +188,7 @@ def test_clientSettingsRequestOTPTrue(http_client, base_url):
     assert responseJson["useWebSocket"] == False
     assert responseJson["accessNumberDigits"] == accessNumberDigits
     assert responseJson["cSum"] == 1
+    assert responseJson["supportedProtocols"] == ["1pass", "2pass"]
     assert responseJson["eMpinAuthenticationURL"] == "{0}/eMpinAuthentication".format(baseURL)
     assert responseJson["eMpinActivationURL"] == "{0}/eMpinActivation".format(baseURL)
     assert responseJson["eMpinActivationVerifyURL"] == "{0}/eMpinActivationVerify".format(baseURL)

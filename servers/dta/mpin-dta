@@ -15,12 +15,12 @@
 # service mpin-dta restart
 
 #export path
-export PYTHONPATH=/opt/src/milagro-mfa-services/lib:/usr/local/lib/python2.7/site-packages
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+export PYTHONPATH=/opt/src/incubator-milagro-mfa-server/lib:/usr/local/lib/python2.7/site-packages
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/amcl/lib
 
 SCRIPT_PATH=dta/dta.py
-SERVER_PATH=/usr/local/mpin/milagro-mfa-services/servers
-STDOUT_PATH=/usr/local/mpin/dta.out
+SERVER_PATH=/opt/src/incubator-milagro-mfa-server/servers
+STDOUT_PATH=/opt/src/incubator-milagro-mfa-server/dta.out
 
 # User running the Play process
 USER=ansible

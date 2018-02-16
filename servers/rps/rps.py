@@ -146,6 +146,7 @@ define("serviceType", default="online", type=unicode)
 define("serviceIconUrl", default="", type=unicode)
 
 # eMpin AUTHENTICATION PROTOCOL
+define("supportedProtocols", default="1pass,2pass", multiple=True)
 define("maxTimeGap", default=300, type=int)
 define("nonceLifetime", default=600, type=int)
 
@@ -336,6 +337,7 @@ class ClientSettingsHandler(BaseHandler):
             "cSum": 1,
             "useNFC": options.useNFC,
 
+            "supportedProtocols": options.supportedProtocols.split(","),
             "eMpinAuthenticationURL": "{0}/eMpinAuthentication".format(baseURL),
             "eMpinActivationURL": "{0}/eMpinActivation".format(baseURL),
             "eMpinActivationVerifyURL": "{0}/eMpinActivationVerify".format(baseURL),
@@ -902,7 +904,7 @@ class RPSTimePermitHandler(BaseHandler):
                 # RPA rejects this mpin id
                 raise HTTPError(response.code)
 
-        hash_mpin_id_hex = hashlib.sha256(mpin_id.decode("hex")).hexdigest()
+        hash_mpin_id_hex = secrets.hash_id(mpin_id.decode("hex")).encode("hex")
         today_epoch = secrets.today()
         signature = signMessage(hash_mpin_id_hex, Keys.app_key)
         time_permit = yield self.get_time_permit(hash_mpin_id_hex, today_epoch, signature)
@@ -2377,14 +2379,12 @@ class EMpinAuthenticationHandler(BaseHandler):
                 unnecessary_key = diff_set.pop()
                 raise UnnecessaryKeyError(unnecessary_key)
 
-            server_secret_hex = self.application.server_secret.server_secret.encode("hex")
-
             mpin_id_hex = str(receive_data['MpinId'])
             mpin_id = mpin_id_hex.decode('hex')
 
             try:
                 user_id = json.loads(mpin_id)["userID"]
-                hash_mpin_id_hex = hashlib.sha256(mpin_id_hex.decode("hex")).hexdigest()
+                hash_mpin_id_hex = secrets.hash_id(mpin_id_hex.decode("hex")).encode("hex")
             except:
                 user_id = ""
                 hash_mpin_id_hex = ""
@@ -2431,16 +2431,7 @@ class EMpinAuthenticationHandler(BaseHandler):
             v_data = v_hex.decode('hex')
 
             # VERIFY
-            # y = Hy(IDa | U | W | nonce | CCT)
-            cstr = mpin_id_hex + u_hex + w_hex + nonce_hex + client_time_hex
-            y = secrets.hash_id(str(cstr))
-
-            # D = HID(IDa) + HT(Ti | IDa)
-            date = secrets.get_today()
-            hid,htid = secrets.server_1(mpin_id_hex.decode('hex'),date)
-
-            # g = e(V, Q) * e(U+yD,sQ)
-            verify,_,_ = secrets.server_2(server_secret_hex.decode('hex'),v_data,date,hid,htid,y.decode('hex'),w_data,u_data)
+            verify = self.application.server_secret.validate_empin_value(mpin_id, u_data, v_data, w_data, nonce_hex, client_time_hex)
 
             aI = self.storage.find(stage="empin-auth-attempts", mpinId=mpin_id)
             log.debug("aI: {0}".format(aI))
@@ -2704,7 +2695,7 @@ class EMpinActivationHandler(BaseHandler):
 
 
         ## GET CLIENT SECRET from DTA
-        hash_mpin_id_hex = hashlib.sha256(mpin_id_hex.decode("hex")).hexdigest()
+        hash_mpin_id_hex = secrets.hash_id(mpin_id_hex.decode("hex")).encode("hex")
 
         # Generate signed params
         path = "clientSecret"
@@ -2781,14 +2772,7 @@ class EMpinActivationHandler(BaseHandler):
             client_secret_share = client_secret_share_hex.decode("hex")
 
             # (S1 - act)A
-            hid, _ = secrets.server_1(mpin_id, 0)
-            activation_code_hex = hex(activation_code)[2::]
-            if len(activation_code_hex) % 2 == 1:
-                activation_code_hex = '0' + activation_code_hex
-            activation_code_bytes = activation_code_hex.decode('hex')[::-1]
-            activation_code_hash = secrets.hash_id(activation_code_bytes)
-            activation_code_hash_bytes = activation_code_hash.decode('hex')
-            encoded_client_secret_share_hex = secrets.calc_client_secret_with_activation_code(hid, activation_code_hash_bytes, client_secret_share)
+            encoded_client_secret_share_hex = self.application.server_secret.calc_client_secret_with_activation_code(mpin_id, activation_code, client_secret_share)
         except (ValueError, TypeError) as ex:
             reason = "Invalid data received. %s" % ex.message
             log.error("%s %s %s %s %s %s" % (request_info, mpin_id_hex, user_id, hash_mpin_id_hex, reason, UA))
@@ -3007,8 +2991,6 @@ class EMpinActivationVerifyHandler(BaseHandler):
                 unnecessary_key = diff_set.pop()
                 raise UnnecessaryKeyError(unnecessary_key)
 
-            server_secret_hex = self.application.server_secret.server_secret.encode("hex")
-
             mpin_id_hex = str(receive_data['MpinId'])
             mpin_id = mpin_id_hex.decode('hex')
 
@@ -3031,14 +3013,7 @@ class EMpinActivationVerifyHandler(BaseHandler):
             v_data = v_hex.decode('hex')
 
             #ACTIVATION VERIFY
-            # y = HY(IDa | U)
-            mu = mpin_id_hex + u_hex
-            y = secrets.hash_id(str(mu))
-
-            # U + yA = (x+y)A
-            # g = e(V, Q) * e(U+yA,sQ)
-            hid,htid = secrets.server_1(mpin_id,0)
-            verify,_,_ = secrets.server_2(server_secret_hex.decode('hex'),v_data,0,hid,htid,y.decode('hex'),u_data,u_data)
+            verify = self.application.server_secret.validate_empin_value(mpin_id, u_data, v_data, None, None, None)
 
             aI = self.storage.find(stage="empin-auth-attempts", mpinId=mpin_id)
             log.debug("aI: {0}".format(aI))

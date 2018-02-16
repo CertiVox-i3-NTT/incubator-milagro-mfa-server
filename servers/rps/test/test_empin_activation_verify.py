@@ -273,48 +273,6 @@ def test_EMpinActivationVerifyHandlerKeyErrorUserAgentEmpty(http_client, base_ur
             mockLog.assert_called_with("{0}/eMpinActivationVerify 127.0.0.1  {1} {2} {3} {4} {5}".format(baseURL, "", "", "", responseJson["message"], "unknown").decode("utf-8"))
 
 @pytest.mark.gen_test
-def test_EMpinActivationVerifyHandlerDecodeYError(http_client, base_url, mocker):
-    baseURL = "/rps"
-
-    userAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.82 Safari/537.36"
-    xForwardedFor = "127.0.0.1"
-    mpinId = "7b226d6f62696c65223a20302c2022697373756564223a2022323031362d31322d30322030343a31363a32322e353138313933222c2022757365724944223a2022726f6f74406c6f63616c686f7374222c202273616c74223a20226666666666666666666666666666666666666666666666666666666666666666227d"
-    userId = "root@localhost"
-
-    body = {
-        "MpinId": mpinId,
-        "U": "040c48f778964a3eaf54fb44538795ce3df778fd8e29b6583cb73e3d863e3139380f3cfaa9b7f9a48c0ada77bb7da68b7faa94fc46b5af834fd6d6354513b98216",
-        "V": "0412e06e5b53cad204b765ee70509797b87208d212f1111e03d6b278db2bbcb8361039b9c389f9c016946de574d3df49aadee883109c14e438c1f1b76f8b14e24f"
-    }
-    request = rps.tornado.httpclient.HTTPRequest(
-        "{0}{1}/eMpinActivationVerify".format(base_url, baseURL),
-        "POST",
-        rps.tornado.httputil.HTTPHeaders({"User-Agent": userAgent, "X-Forwarded-For": xForwardedFor}),
-        json.dumps(body)
-    )
-
-    mockTime = datetime.datetime.strptime("2016-04-01T12:00:00.000001", "%Y-%m-%dT%H:%M:%S.%f")
-    mockLog = mocker.Mock()
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.hash_id", return_value="decodeError"), mock.patch.object(rps.log, "error", mockLog):
-        try:
-            response = yield http_client.fetch(request)
-            assert False
-        except rps.tornado.httpclient.HTTPError as e:
-            assert e.response.code == 400
-
-            assert e.response.headers.get("Access-Control-Allow-Origin") == None
-            assert e.response.headers.get("Access-Control-Allow-Credentials") == "true"
-            assert e.response.headers.get("Access-Control-Allow-Methods") == "GET,PUT,POST,DELETE,OPTIONS"
-            assert e.response.headers.get("Access-Control-Allow-Headers") == "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, X-Requested-By, If-Modified-Since, X-File-Name, Cache-Control, WWW-Authenticate"
-            assert e.response.headers.get("Content-Type") == "application/json; charset=UTF-8"
-
-            responseJson = json.loads(e.response.body)
-            assert responseJson["version"] == "0.3"
-            assert responseJson["message"] == "Invalid data received. Odd-length string"
-
-            mockLog.assert_called_with("{0}/eMpinActivationVerify 127.0.0.1 {1} {2} {3} {4} {5} {6}".format(baseURL, xForwardedFor, mpinId, userId, "", responseJson["message"], userAgent).decode("utf-8"))
-
-@pytest.mark.gen_test
 def test_EMpinActivationVerifyHandlerDecodeErrorUserAgentEmpty(http_client, base_url, mocker):
     baseURL = "/rps"
 
@@ -829,11 +787,11 @@ def test_EMpinActivationVerifyHandlerActivationCodeMin(http_client, base_url, mo
 def test_EMpinActivationVerifyHandlerCapital(http_client, base_url, mocker):
     baseURL = "/rps"
 
-    mpinId = "7B226D6F62696C65223A20302C2022697373756564223A2022323031372D30322D30312030333A34333A35322E333939303437222C2022757365724944223A2022726F6F74406C6F63616C686F7374222C202273616C74223A20223036656536633932333033646135366233636231623430666666376534613766227D"
+    mpinId = "7B226D6F62696C65223A20302C2022697373756564223A2022323031362D31322D30322030343A31363A32322E353138313933222C2022757365724944223A2022726F6F74406C6F63616C686F7374222C202273616C74223A20226666666666666666666666666666666666666666666666666666666666666666227D"
     body = {
         "MpinId": mpinId,
-        "U": "041fca29c0f395a6918434891879c681796a77d05934eafe74e88fcfb48338698a0da510cc7dde415f12e5a262b5aa875a5ad43b0e355840df3b79d95e4a051bc3",
-        "V": "0406cb9229eA70a8c80c7cbc14dea48cc6da7130b73039eaceeb8c14ae63b2a0aa1d36166be2046e50794488457834e5bdde0c653Ff7847d8d44d500402bdc9a9d"
+        "U": "040c48F778964A3eaf54fb44538795ce3df778fd8e29b6583cb73e3d863e3139380f3cfaa9b7f9a48c0ada77bb7da68b7faa94fc46b5af834fd6d6354513b98216",
+        "V": "0412e06e5b53cAd204b765ee70509797b87208d212F1111e03d6b278db2bbcb8361039b9c389f9c016946de574d3df49aadee883109c14e438c1f1b76f8b14e24f"
     }
     request = rps.tornado.httpclient.HTTPRequest(
         "{0}{1}/eMpinActivationVerify".format(base_url, baseURL),

@@ -84,7 +84,7 @@ def test_EMpinAuthenticationHandler(http_client, base_url, mocker):
         json.dumps(body)
     )
     mockLog = mocker.Mock()
-    with mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
         response = yield http_client.fetch(request)
 
         assert response.code == 200
@@ -149,7 +149,7 @@ def test_EMpinAuthenticationHandlerDelAttemptsCount(http_client, base_url, mocke
     )
     mockLog = mocker.Mock()
     http_server.storage.add(stage="empin-auth-attempts", mpinId=mpinId.decode("hex"), attemptsCount=rps.options.maxInvalidLoginAttempts - 1)
-    with mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
         response = yield http_client.fetch(request)
 
         assert response.code == 200
@@ -349,58 +349,6 @@ def test_EMpinAuthenticationHandlerKeyErrorUserAgentEmpty(http_client, base_url,
             mockLog.assert_called_with("{0}/eMpinAuthentication 127.0.0.1  {1} {2} {3} {4} {5}".format(baseURL, "", "", "", responseJson["message"], "unknown").decode("utf-8"))
 
 @pytest.mark.gen_test
-def test_EMpinAuthenticationHandlerDecodeYError(http_client, base_url, mocker):
-    baseURL = "/rps"
-    mpinId = "7b226d6f62696c65223a20302c2022697373756564223a2022323031362d31312d31302030353a33333a32382e363633343134222c2022757365724944223a2022616e7369626c65406c6f63616c686f7374222c202273616c74223a20226565383936386430643161636637633733643662366336623466363563626435227d"
-    userId = "ansible@localhost"
-    hashMpinId = "56f4c761982fa4b9a71cfb862852a37c036a5af7a42f1d8f4694b102bab0efbf"
-
-    u = "0407a052906204495ae514b8f7e994ca6fb77c858fa7aa6f0324cd37462d7c7e1106aff90c4b1b578e6f350745b033666693a1b76a943a6d2481e5a6a721f01692"
-    v = "04020edf9c5d7cb0ab8d606caf27e0df76329f409b5974d4c195fd461e09ca92760c51b59e8fc0c412f68bb96871ad74004997dd3fe36f9813d1f46c6808dbf47a"
-    w = "0405b095f17730d377157cc65259db81fb14a8183eab1c24126613a842b611254402597ee0f181447f584d9fc0d00ab51f41dbcc4ed1bfe9a15bd3ce3702070ce7"
-    nonce = "ee5cf55c3d5185355cf3a7e6107a297e65fd85c9784fc5a5c7d75afb689a721c"
-    cct = "1584cba487c"
-
-    userAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.82 Safari/537.36"
-    xForwardedFor = "127.0.0.1"
-    body = {
-        "MpinId": mpinId,
-        "U": u,
-        "V": v,
-        "W": w,
-        "Nonce": nonce,
-        "CCT": cct
-    }
-    request = rps.tornado.httpclient.HTTPRequest(
-        "{0}{1}/eMpinAuthentication".format(base_url, baseURL),
-        "POST",
-        rps.tornado.httputil.HTTPHeaders({"User-Agent": userAgent, "X-Forwarded-For": xForwardedFor}),
-        json.dumps(body)
-    )
-
-    mockTime = datetime.datetime.strptime("2100-04-01T12:00:00.000001", "%Y-%m-%dT%H:%M:%S.%f")
-    mockLog = mocker.Mock()
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mocker.patch("rps.secrets.hash_id", return_value="decodeError"), mock.patch.object(rps.log, "error", mockLog):
-        try:
-            response = yield http_client.fetch(request)
-            assert False
-
-        except rps.tornado.httpclient.HTTPError as e:
-            assert e.response.code == 400
-
-            assert e.response.headers.get("Access-Control-Allow-Origin") == None
-            assert e.response.headers.get("Access-Control-Allow-Credentials") == "true"
-            assert e.response.headers.get("Access-Control-Allow-Methods") == "GET,PUT,POST,DELETE,OPTIONS"
-            assert e.response.headers.get("Access-Control-Allow-Headers") == "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, X-Requested-By, If-Modified-Since, X-File-Name, Cache-Control, WWW-Authenticate"
-            assert e.response.headers.get("Content-Type") == "application/json; charset=UTF-8"
-
-            responseJson = json.loads(e.response.body)
-            assert responseJson["version"] == "0.3"
-            assert responseJson["message"] == "Invalid data received. Odd-length string"
-
-            mockLog.assert_called_with("{0}/eMpinAuthentication 127.0.0.1 {1} {2} {3} {4} {5} {6}".format(baseURL, xForwardedFor, mpinId, userId, hashMpinId, responseJson["message"], userAgent).decode("utf-8"))
-
-@pytest.mark.gen_test
 def test_EMpinAuthenticationHandlerDecodeErrorUserAgentEmpty(http_client, base_url, mocker):
     baseURL = "/rps"
     u = "0407a052906204495ae514b8f7e994ca6fb77c858fa7aa6f0324cd37462d7c7e1106aff90c4b1b578e6f350745b033666693a1b76a943a6d2481e5a6a721f01692"
@@ -580,7 +528,7 @@ def test_EMpinAuthenticationHandlerClientTimeError(http_client, base_url, mocker
 
     mockTime = datetime.datetime.strptime("2016-08-05T12:00:00.000001", "%Y-%m-%dT%H:%M:%S.%f")
     mockLog = mocker.Mock()
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.log, "error", mockLog):
+    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.log, "error", mockLog):
         try:
             response = yield http_client.fetch(request)
             assert False
@@ -632,7 +580,7 @@ def test_EMpinAuthenticationHandlerClientTimeErrorUserAgentEmpty(http_client, ba
 
     mockTime = datetime.datetime.strptime("2016-08-05T12:00:00.000001", "%Y-%m-%dT%H:%M:%S.%f")
     mockLog = mocker.Mock()
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.log, "error", mockLog):
+    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.log, "error", mockLog):
         try:
             response = yield http_client.fetch(request)
             assert False
@@ -688,7 +636,7 @@ def test_EMpinAuthenticationHandlerMaxAttemptsCountError(http_client, base_url, 
     mockLog = mocker.Mock()
 
     http_server.storage.add(stage="empin-auth-attempts", mpinId=mpinId.decode("hex"), attemptsCount=rps.options.maxInvalidLoginAttempts)
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
+    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
         try:
             response = yield http_client.fetch(request)
             assert False
@@ -740,7 +688,7 @@ def test_EMpinAuthenticationHandlerMaxAttemptsCountErrorUserAgentEmpty(http_clie
     mockLog = mocker.Mock()
 
     http_server.storage.add(stage="empin-auth-attempts", mpinId=mpinId.decode("hex"), attemptsCount=rps.options.maxInvalidLoginAttempts)
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
+    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
         try:
             response = yield http_client.fetch(request)
             assert False
@@ -793,7 +741,7 @@ def test_EMpinAuthenticationHandlerVerifError(http_client, base_url, mocker):
     mockTime = datetime.datetime.strptime("2016-04-01T12:00:00.000001", "%Y-%m-%dT%H:%M:%S.%f")
     mockLog = mocker.Mock()
 
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
+    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
         try:
             response = yield http_client.fetch(request)
             assert False
@@ -847,7 +795,7 @@ def test_EMpinAuthenticationHandlerVerifErrorUserAgentEmpty(http_client, base_ur
     mockTime = datetime.datetime.strptime("2016-04-01T12:00:00.000001", "%Y-%m-%dT%H:%M:%S.%f")
     mockLog = mocker.Mock()
 
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
+    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
         try:
             response = yield http_client.fetch(request)
             assert False
@@ -905,7 +853,7 @@ def test_EMpinAuthenticationHandlerVerifMaxAttemptsCountError(http_client, base_
     mockLog = mocker.Mock()
 
     http_server.storage.add(stage="empin-auth-attempts", mpinId=mpinId.decode("hex"), attemptsCount=rps.options.maxInvalidLoginAttempts - 1)
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
+    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
         try:
             response = yield http_client.fetch(request)
             assert False
@@ -960,7 +908,7 @@ def test_EMpinAuthenticationHandlerVerifMaxAttemptsCountErrorUserAgentEmpty(http
     mockLog = mocker.Mock()
 
     http_server.storage.add(stage="empin-auth-attempts", mpinId=mpinId.decode("hex"), attemptsCount=rps.options.maxInvalidLoginAttempts - 1)
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
+    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
         try:
             response = yield http_client.fetch(request)
             assert False
@@ -1008,7 +956,7 @@ def test_EMpinAuthenticationHandlerMpinIdMax(http_client, base_url, mocker):
         json.dumps(body)
     )
     mockLog = mocker.Mock()
-    with mocker.patch("rps.secrets.get_today",return_value=17134), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17134), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
         response = yield http_client.fetch(request)
 
         assert response.code == 200
@@ -1072,7 +1020,7 @@ def test_EMpinAuthenticationHandlerMpinIdMin(http_client, base_url, mocker):
         json.dumps(body)
     )
     mockLog = mocker.Mock()
-    with mocker.patch("rps.secrets.get_today",return_value=17134), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17134), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
         response = yield http_client.fetch(request)
 
         assert response.code == 200
@@ -1137,7 +1085,7 @@ def test_EMpinAuthenticationHandlerNonceMax(http_client, base_url, mocker):
         json.dumps(body)
     )
     mockLog = mocker.Mock()
-    with mocker.patch("rps.secrets.get_today",return_value=17140), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17140), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
         response = yield http_client.fetch(request)
 
         assert response.code == 200
@@ -1202,7 +1150,7 @@ def test_EMpinAuthenticationHandlerNonceMin(http_client, base_url, mocker):
         json.dumps(body)
     )
     mockLog = mocker.Mock()
-    with mocker.patch("rps.secrets.get_today",return_value=17136), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17136), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
         response = yield http_client.fetch(request)
 
         assert response.code == 200
@@ -1267,7 +1215,7 @@ def test_EMpinAuthenticationHandlerXValueMax(http_client, base_url, mocker):
         json.dumps(body)
     )
     mockLog = mocker.Mock()
-    with mocker.patch("rps.secrets.get_today",return_value=17136), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17136), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
         response = yield http_client.fetch(request)
 
         assert response.code == 200
@@ -1332,7 +1280,7 @@ def test_EMpinAuthenticationHandlerXValueMin(http_client, base_url, mocker):
         json.dumps(body)
     )
     mockLog = mocker.Mock()
-    with mocker.patch("rps.secrets.get_today",return_value=17137), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17137), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
         response = yield http_client.fetch(request)
 
         assert response.code == 200
@@ -1374,14 +1322,14 @@ def test_EMpinAuthenticationHandlerXValueMin(http_client, base_url, mocker):
 @pytest.mark.gen_test
 def test_EMpinAuthenticationHandlerCapital(http_client, base_url, mocker):
     baseURL = "/rps"
-    mpinId = "7B226D6F62696C65223A20302C2022697373756564223A2022323031372D30322D30312030333A34333A35322E333939303437222C2022757365724944223A2022726F6F74406C6F63616C686F7374222C202273616C74223A20223036656536633932333033646135366233636231623430666666376534613766227D"
-    userId = "root@localhost"
-    hashMpinId = "2e673ca59bd2c9a7dfcaf24bea69f38e8c4d767384a48226c3ab4e9500d72881"
-    u = "04211cd7ad2cb56b59097a39ff52fe939615ca7c915ab388b574770872befb637e063076cab4268c9835c56a8cc2de5cda1e6f733627a622e363e36063b007eb21"
-    v = "040d5F06d295d661A10eeabca17af93735172a5925dfea90381187ed82dce058e417a55d504552ae4904cc5213024f050ac5c3041fd692a7a245bba44e4b643c09"
-    w = "04133ae8cff37d5264e5b98ed868d10f48852b1ca50bce982fde91c83fe76e7e8f18754c08a1ca9ea4278db79a1f0001b6648c97bf5afc47581a8b9269ac80f8bf"
-    nonce = "d80ba8a8e6ccdd8deed22868a1d3bd0871b9a84403392abce876840d79101d88"
-    cct = "159f7c64e37"
+    mpinId = "7B226D6F62696C65223A20302C2022697373756564223A2022323031362D31312D31302030353A33333A32382E363633343134222C2022757365724944223A2022616E7369626C65406C6F63616C686F7374222C202273616C74223A20226565383936386430643161636637633733643662366336623466363563626435227D"
+    userId = "ansible@localhost"
+    hashMpinId = "56f4c761982fa4b9a71cfb862852a37c036a5af7a42f1d8f4694b102bab0efbf"
+    u = "0407A052906204495ae514b8F7e994ca6fb77c858fa7aa6f0324cd37462d7c7e1106aff90c4b1b578e6f350745b033666693a1b76a943a6d2481e5a6a721f01692"
+    v = "04020edF9c5d7cb0Ab8d606caf27e0df76329f409b5974d4c195fd461e09ca92760c51b59e8fc0c412f68bb96871ad74004997dd3fe36f9813d1f46c6808dbf47a"
+    w = "0405b095F17730d377157cc65259db81fb14A8183eab1c24126613a842b611254402597ee0f181447f584d9fc0d00ab51f41dbcc4ed1bfe9a15bd3ce3702070ce7"
+    nonce = "ee5cf55c3d5185355cf3a7e6107a297e65fd85c9784fc5a5c7d75afb689a721c"
+    cct = "1584cba487c"
     body = {
         "MpinId": mpinId,
         "U": u,
@@ -1397,7 +1345,7 @@ def test_EMpinAuthenticationHandlerCapital(http_client, base_url, mocker):
         json.dumps(body)
     )
     mockLog = mocker.Mock()
-    with mocker.patch("rps.secrets.get_today",return_value=17198), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "info", mockLog):
         response = yield http_client.fetch(request)
 
         assert response.code == 200
@@ -1439,15 +1387,14 @@ def test_EMpinAuthenticationHandlerCapital(http_client, base_url, mocker):
 @pytest.mark.gen_test
 def test_EMpinAuthenticationHandlerCapitalError(http_client, base_url, mocker):
     baseURL = "/rps"
-    mpinId = "7B226D6F62696C65223A20302C2022697373756564223A2022323031372D30322D30312030333A34333A35322E333939303437222C2022757365724944223A2022726F6F74406C6F63616C686F7374222C202273616C74223A20223036656536633932333033646135366233636231623430666666376534613766227D"
-    userId = "root@localhost"
-    hashMpinId = "2e673ca59bd2c9a7dfcaf24bea69f38e8c4d767384a48226c3ab4e9500d72881"
-
-    u = "04211cd7Ad2cb56b59097a39Ff52fe939615ca7c915ab388b574770872befb637e063076cab4268c9835c56a8cc2de5cda1e6f733627a622e363e36063b007eb21"
-    v = "04133Ae8cFf37d5264e5b98ed868d10f48852b1ca50bce982fde91c83fe76e7e8f18754c08a1ca9ea4278db79a1f0001b6648c97bf5afc47581a8b9269ac80f8bf"
-    w = "040d5F06D295d661A10eeabca17af93735172a5925dfea90381187ed82dce058e417a55d504552ae4904cc5213024f050ac5c3041fd692a7a245bba44e4b643c09"
-    nonce = "d80bAFa8e6ccdd8deed22868a1d3bd0871b9a84403392abce876840d79101d88"
-    cct = "15AF7c64e37"
+    mpinId = "7B226D6F62696C65223A20302C2022697373756564223A2022323031362D31312D31302030353A33333A32382E363633343134222C2022757365724944223A2022616E7369626C65406C6F63616C686F7374222C202273616C74223A20226565383936386430643161636637633733643662366336623466363563626435227D"
+    userId = "ansible@localhost"
+    hashMpinId = "56f4c761982fa4b9a71cfb862852a37c036a5af7a42f1d8f4694b102bab0efbf"
+    u = "0407A052906204495ae514b8F7e994ca6fb77c858fa7aa6f0324cd37462d7c7e1106aff90c4b1b578e6f350745b033666693a1b76a943a6d2481e5a6a721f01692"
+    v = "04020edF9c5d7cb0Ab8d606caf27e0df76329f409b5974d4c195fd461e09ca92760c51b59e8fc0c412f68bb96871ad74004997dd3fe36f9813d1f46c6808dbf47a"
+    w = "0405b095F17730d377157cc65259db81fb14A8183eab1c24126613a842b611254402597ee0f181447f584d9fc0d00ab51f41dbcc4ed1bfe9a15bd3ce3702070ce7"
+    nonce = "ee5cF55c3d5185355cf3A7e6107a297e65fd85c9784fc5a5c7d75afb689a721c"
+    cct = "1584cbA487F"
     userAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.82 Safari/537.36"
     xForwardedFor = "127.0.0.1"
     body = {
@@ -1467,7 +1414,7 @@ def test_EMpinAuthenticationHandlerCapitalError(http_client, base_url, mocker):
 
     mockTime = datetime.datetime.strptime("2100-04-01T12:00:00.000001", "%Y-%m-%dT%H:%M:%S.%f")
     mockLog = mocker.Mock()
-    with mocker.patch("rps.secrets.get_today",return_value=17198), mocker.patch("rps.Time.syncedNow", return_value=mockTime), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17198), mocker.patch("rps.Time.syncedNow", return_value=mockTime), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog):
         try:
             response = yield http_client.fetch(request)
             assert False
@@ -3514,7 +3461,7 @@ def test_EMpinAuthenticationHandlerUserIDGetFailed(http_client, base_url, mocker
     )
     mockLog = mocker.Mock()
     mockWarnLog = mocker.Mock()
-    with mocker.patch("rps.secrets.get_today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog), mock.patch.object(rps.log, "warn", mockWarnLog):
+    with mocker.patch("rps.secrets.mpin.today",return_value=17115), mock.patch.object(rps.options.mockable(), "maxTimeGap", sys.maxint), mock.patch.object(rps.log, "error", mockLog), mock.patch.object(rps.log, "warn", mockWarnLog):
         try:
             response = yield http_client.fetch(request)
             assert False

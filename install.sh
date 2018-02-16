@@ -30,22 +30,19 @@ function install_dependencies {
 }
 
 function get_crypto {
-    echo "Get Milagro Crypto Libraries"
+    echo "Get Milagro Crypto C Library"
     mkdir -p install
     cd install || exit
-    git clone https://github.com/miracl/milagro-crypto.git
+    git clone -b master https://github.com/miracl/milagro-crypto-c.git 
 
-    cd milagro-crypto || exit
+    cd milagro-crypto-c || exit
 }
 
 function build_crypto {
-    echo "Build Milagro crypto library"
+    echo "Build milagro-crypto-c library"
 
-    mkdir Release
-    cd Release || exit
-    cmake ..
-    make
-    make test
+    make build TYPE=LINUX_64BIT_BN254_CX_WRAPPERS
+    cd target/LINUX_64BIT_BN254_CX_WRAPPERS || exit
     sudo make install
 }
 
@@ -190,8 +187,8 @@ function run_instructions {
     For development purposes you might run the services from command line.
     Open 3 terminals and set the following two environment variables as shown below:
 
-    export PYTHONPATH=<mpin-backend>/lib:/usr/local/lib/python2.7/site-packages
-    export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/usr/local/lib
+    export PYTHONPATH=<path>/incubator-milagro-mfa-server/lib:/usr/lib/python2.7/dist-packages
+    export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:/opt/amcl/lib
     To run the services, perform the following commands, each in separate terminal:
 
      > python servers/dta/dta.py

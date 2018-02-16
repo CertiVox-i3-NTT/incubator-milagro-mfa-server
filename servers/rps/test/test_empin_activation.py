@@ -633,54 +633,6 @@ def test_EMpinActivationHandlerDecodeClientSecretError(http_client, base_url, ht
             mockLog.assert_called_with("{0}/eMpinActivation 127.0.0.1 {1} {2} {3} {4} Invalid data received. clientSecret invalid length {5}".format(baseURL, xForwardedFor, mpinId, userId, hashMpinId, userAgent).decode("utf-8"))
 
 @pytest.mark.gen_test
-def test_EMpinActivationHandlerDecodeActivateCodeHashError(http_client, base_url, httpserver, mocker):
-    baseURL = "/rps"
-    userId = "root@localhost"
-    mobile = 0
-    appId = "828aab3a428811e6b23b06df5546c0ed"
-    appKey = "95735f53a8a7acfb68748c3d47924a4f"
-    userAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.82 Safari/537.36"
-    xForwardedFor = "127.0.0.1"
-
-    body = {
-        "mobile": mobile,
-        "userId": userId
-    }
-    request = rps.tornado.httpclient.HTTPRequest(
-
-        "{0}{1}/eMpinActivation".format(base_url, baseURL),
-        "PUT",
-        rps.tornado.httputil.HTTPHeaders({"User-Agent": userAgent, "X-Forwarded-For": xForwardedFor}),
-        json.dumps(body)
-    )
-    mpinId = "7b226d6f62696c65223a20302c2022697373756564223a2022323031362d30342d30312031323a30303a30302e303030303031222c2022757365724944223a2022726f6f74406c6f63616c686f7374222c202273616c74223a20226336653263303432313933393433303531386538343762626361323630343166227d"
-    hashMpinId = "9a3e3fd400f9a508652638c47b7b0ac11d7dd015f29a15805300a3b31b035f46"
-    signature = "1f86a9493998dec2aad5f3afb95226ebbd553778e798379085c505a8bf5d6cbc"
-
-    mockTime = datetime.datetime.strptime("2016-04-01T12:00:00.000001", "%Y-%m-%dT%H:%M:%S.%f")
-    mockUrandomHex = "c6e2c0421939430518e847bbca26041f"
-    mockRandomInt = 284065070394
-    mockResponse = {
-        "clientSecret": "04010ec01050179f07484d8db2d806095baef147b0466527efd86ba4a9aa40974b2075a354962403fd97d2d0b4fa100cad38c1309b712d7923b73367d611b13568",
-        "message": "OK",
-    }
-
-    httpserver.serve_content(json.dumps(mockResponse), 200)
-    mockLog = mocker.Mock()
-    with mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("os.urandom", return_value=mockUrandomHex.decode('hex')), mock.patch.object(rps.Keys, "app_id", appId), mock.patch.object(rps.Keys, "app_key", appKey), mock.patch.object(rps.options.mockable(), "DTALocalURL", httpserver.url.decode("utf-8")), mocker.patch("rps.secrets.get_random_integer", return_value=mockRandomInt), mocker.patch("rps.secrets.hash_id", return_value="decodeError"), mock.patch.object(rps.log, "error", mockLog):
-        try:
-            response = yield http_client.fetch(request)
-            assert False
-        except rps.tornado.httpclient.HTTPError as e:
-            assert e.code == 400
-            assert e.response.headers.get("Access-Control-Allow-Origin") == None
-            assert e.response.headers.get("Access-Control-Allow-Credentials") == "true"
-            assert e.response.headers.get("Access-Control-Allow-Methods") == "GET,PUT,POST,DELETE,OPTIONS"
-            assert e.response.headers.get("Access-Control-Allow-Headers") == "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, X-Requested-By, If-Modified-Since, X-File-Name, Cache-Control, WWW-Authenticate"
-
-            mockLog.assert_called_with("{0}/eMpinActivation 127.0.0.1 {1} {2} {3} {4} Invalid data received. Odd-length string {5}".format(baseURL, xForwardedFor, mpinId, userId, hashMpinId, userAgent).decode("utf-8"))
-
-@pytest.mark.gen_test
 def test_EMpinActivationHandlerEncodeError(http_client, base_url, httpserver, mocker):
     baseURL = "/rps"
     userId = "root@localhost"
@@ -762,7 +714,7 @@ def test_EMpinActivationHandlerEncodeInvalidHidError(http_client, base_url, http
 
     httpserver.serve_content(json.dumps(mockResponse), 200)
     mockLog = mocker.Mock()
-    with mocker.patch("rps.secrets.server_1", return_value=(mockHid.decode("hex"),"")), mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("os.urandom", return_value=mockUrandomHex.decode('hex')), mock.patch.object(rps.Keys, "app_id", appId), mock.patch.object(rps.Keys, "app_key", appKey), mock.patch.object(rps.options.mockable(), "DTALocalURL", httpserver.url.decode("utf-8")), mocker.patch("rps.secrets.get_random_integer", return_value=mockRandomInt), mock.patch.object(rps.log, "error", mockLog):
+    with mocker.patch("rps.secrets.mpin.server_1", return_value=(mockHid.decode("hex"),"")), mocker.patch("rps.Time.syncedNow", return_value=mockTime), mocker.patch("os.urandom", return_value=mockUrandomHex.decode('hex')), mock.patch.object(rps.Keys, "app_id", appId), mock.patch.object(rps.Keys, "app_key", appKey), mock.patch.object(rps.options.mockable(), "DTALocalURL", httpserver.url.decode("utf-8")), mocker.patch("rps.secrets.get_random_integer", return_value=mockRandomInt), mock.patch.object(rps.log, "error", mockLog):
         try:
             response = yield http_client.fetch(request)
             assert False
